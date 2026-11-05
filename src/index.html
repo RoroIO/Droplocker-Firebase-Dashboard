@@ -19,6 +19,7 @@ summary::-webkit-details-marker{display:none}summary::before{content:"▸";color
 .t{flex:1;font-weight:600}.tag{font-size:11px;color:var(--mut);border:1px solid var(--line);border-radius:99px;padding:1px 8px}
 .n{font-variant-numeric:tabular-nums;font-weight:700}
 .locs{padding:0 14px 12px}.row{display:grid;grid-template-columns:minmax(120px,2fr) 3fr 60px;gap:10px;align-items:center;padding:3px 0;border-top:1px solid var(--line)}
+a{color:var(--acc);text-decoration:none}a:hover{text-decoration:underline}
 .track{height:8px;background:var(--line);border-radius:4px}.fill{height:100%;background:var(--bar);border-radius:4px}
 .empty{color:var(--mut);padding:30px;text-align:center}
 @media(max-width:600px){.row{grid-template-columns:1fr 50px}.track{display:none}}
@@ -53,6 +54,8 @@ function fillLocs(){
 ["from","to","cat","loc"].forEach(i=>$(i).onchange=render);
 ["plat","showTest"].forEach(i=>$(i).onchange=()=>{fillLocs();render()});
 fillLocs();
+// Firebase console escapes path characters with "~" where a URL would use "%".
+const consoleUrl=loc=>D.console+encodeURIComponent("/logs/"+loc).replace(/%/g,"~");
 const esc=s=>s.replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
 function render(){
  const f=$("from").value,t=$("to").value,cat=$("cat").value,pl=$("plat").value,ht=!$("showTest").checked,lc=$("loc").value;
@@ -68,7 +71,7 @@ function render(){
  $("kpis").innerHTML=`<div class="kpi"><b>${total.toLocaleString()}</b><span>total errors</span></div><div class="kpi"><b>${types.length}</b><span>failure types</span></div><div class="kpi"><b>${locs.size}</b><span>locations affected</span></div>`;
  $("list").innerHTML=types.length?types.map(([ty,l,sum])=>{
   const es=Object.entries(l).sort((a,b)=>b[1]-a[1]),mx=es[0][1];
-  return `<details data-k="${esc(ty)}"${open.has(ty)?" open":""}><summary><span class="t">${esc(ty)}</span><span class="tag">${D.types[ty]}</span><span class="tag">${es.length} loc</span><span class="n">${sum.toLocaleString()}</span></summary><div class="locs">${es.map(([loc,n])=>`<div class="row"><span>${esc(D.locations[loc])}</span><div class="track"><div class="fill" style="width:${n/mx*100}%"></div></div><b class="n" style="text-align:right">${n.toLocaleString()}</b></div>`).join("")}</div></details>`}).join(""):'<div class="empty">No errors in this range.</div>';
+  return `<details data-k="${esc(ty)}"${open.has(ty)?" open":""}><summary><span class="t">${esc(ty)}</span><span class="tag">${D.types[ty]}</span><span class="tag">${es.length} loc</span><span class="n">${sum.toLocaleString()}</span></summary><div class="locs">${es.map(([loc,n])=>`<div class="row"><a href="${consoleUrl(loc)}" target="_blank" rel="noopener" title="Open logs in Firebase console">${esc(D.locations[loc])}</a><div class="track"><div class="fill" style="width:${n/mx*100}%"></div></div><b class="n" style="text-align:right">${n.toLocaleString()}</b></div>`).join("")}</div></details>`}).join(""):'<div class="empty">No errors in this range.</div>';
 }
 render();
 }

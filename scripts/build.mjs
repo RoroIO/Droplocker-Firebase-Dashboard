@@ -4,6 +4,10 @@ import { mkdir, copyFile, writeFile } from "node:fs/promises";
 
 const DB = process.env.FIREBASE_DB_URL || "https://guest-rental-logs-default-rtdb.firebaseio.com";
 const CONCURRENCY = 12;
+// Firebase console link for a DB path. The default instance is "<projectId>-default-rtdb".
+const INSTANCE = new URL(DB).hostname.split(".")[0];
+const PROJECT = process.env.FIREBASE_PROJECT_ID || INSTANCE.replace(/-default-rtdb$/, "");
+const CONSOLE = `https://console.firebase.google.com/project/${PROJECT}/database/${INSTANCE}/data/`;
 
 async function get(path, shallow = false) {
   const url = `${DB}/${path.split("/").map(encodeURIComponent).join("/")}.json${shallow ? "?shallow=true" : ""}`;
@@ -65,5 +69,5 @@ await mapLimit(jobs, CONCURRENCY, async ([loc, day]) => {
 
 await mkdir("public", { recursive: true });
 await copyFile("src/index.html", "public/index.html");
-await writeFile("public/data.json", JSON.stringify({ generated: new Date().toISOString(), types, locations, rows }));
+await writeFile("public/data.json", JSON.stringify({ generated: new Date().toISOString(), console: CONSOLE, types, locations, rows }));
 console.log(`wrote public/data.json (${rows.length} rows) in ${((Date.now() - started) / 1000).toFixed(0)}s`);
