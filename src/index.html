@@ -30,7 +30,7 @@ summary::-webkit-details-marker{display:none}summary::before{content:"▸";color
  <label>Location<select id="loc" style="max-width:260px"><option value="">All</option></select></label>
  <label>Category<select id="cat"><option value="">All</option></select></label>
  <label>Platform<select id="plat"><option value="">All</option><option>kiosk</option><option>mobile</option></select></label>
- <label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="test" checked> Hide test locations</label>
+ <label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="showTest"> Show test locations</label>
 </div></header>
 <main><div class="kpis" id="kpis"></div><div id="list"><div class="empty">Loading…</div></div></main>
 <script>
@@ -44,18 +44,18 @@ $("from").value=minD;$("to").value=maxD;
 function preset(n){const t=new Date(maxD+"T00:00Z");t.setUTCDate(t.getUTCDate()-n+1);$("to").value=maxD;$("from").value=n?t.toISOString().slice(0,10):minD;render()}
 document.querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>preset(+b.dataset.d));
 function fillLocs(){
- const pl=$("plat").value,ht=$("test").checked,cur=$("loc").value;
+ const pl=$("plat").value,ht=!$("showTest").checked,cur=$("loc").value;
  $("loc").length=1;
  Object.entries(D.locations).filter(([,n])=>(!pl||n.endsWith("["+pl+"]"))&&!(ht&&isTest(n)))
   .sort((a,b)=>a[1].localeCompare(b[1])).forEach(([k,n])=>$("loc").add(new Option(n,k)));
  $("loc").value=[...$("loc").options].some(o=>o.value===cur)?cur:"";
 }
 ["from","to","cat","loc"].forEach(i=>$(i).onchange=render);
-["plat","test"].forEach(i=>$(i).onchange=()=>{fillLocs();render()});
+["plat","showTest"].forEach(i=>$(i).onchange=()=>{fillLocs();render()});
 fillLocs();
 const esc=s=>s.replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
 function render(){
- const f=$("from").value,t=$("to").value,cat=$("cat").value,pl=$("plat").value,ht=$("test").checked,lc=$("loc").value;
+ const f=$("from").value,t=$("to").value,cat=$("cat").value,pl=$("plat").value,ht=!$("showTest").checked,lc=$("loc").value;
  const agg={},open=new Set([...document.querySelectorAll("details[open]")].map(d=>d.dataset.k));
  let total=0;
  for(const [ty,loc,day,n] of D.rows){
