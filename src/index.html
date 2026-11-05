@@ -27,6 +27,7 @@ summary::-webkit-details-marker{display:none}summary::before{content:"▸";color
 <div class="bar">
  <label>From<input type="date" id="from"></label><label>To<input type="date" id="to"></label>
  <span><button data-d="1">Today</button> <button data-d="7">7d</button> <button data-d="30">30d</button> <button data-d="90">90d</button> <button data-d="0">All</button></span>
+ <label>Location<select id="loc" style="max-width:260px"><option value="">All</option></select></label>
  <label>Category<select id="cat"><option value="">All</option></select></label>
  <label>Platform<select id="plat"><option value="">All</option><option>kiosk</option><option>mobile</option></select></label>
  <label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="test" checked> Hide test locations</label>
@@ -42,14 +43,23 @@ $("gen").textContent="Data through "+maxD+" · refreshed "+new Date(D.generated)
 $("from").value=minD;$("to").value=maxD;
 function preset(n){const t=new Date(maxD+"T00:00Z");t.setUTCDate(t.getUTCDate()-n+1);$("to").value=maxD;$("from").value=n?t.toISOString().slice(0,10):minD;render()}
 document.querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>preset(+b.dataset.d));
-["from","to","cat","plat","test"].forEach(i=>$(i).onchange=render);
+function fillLocs(){
+ const pl=$("plat").value,ht=$("test").checked,cur=$("loc").value;
+ $("loc").length=1;
+ Object.entries(D.locations).filter(([,n])=>(!pl||n.endsWith("["+pl+"]"))&&!(ht&&isTest(n)))
+  .sort((a,b)=>a[1].localeCompare(b[1])).forEach(([k,n])=>$("loc").add(new Option(n,k)));
+ $("loc").value=[...$("loc").options].some(o=>o.value===cur)?cur:"";
+}
+["from","to","cat","loc"].forEach(i=>$(i).onchange=render);
+["plat","test"].forEach(i=>$(i).onchange=()=>{fillLocs();render()});
+fillLocs();
 const esc=s=>s.replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
 function render(){
- const f=$("from").value,t=$("to").value,cat=$("cat").value,pl=$("plat").value,ht=$("test").checked;
+ const f=$("from").value,t=$("to").value,cat=$("cat").value,pl=$("plat").value,ht=$("test").checked,lc=$("loc").value;
  const agg={},open=new Set([...document.querySelectorAll("details[open]")].map(d=>d.dataset.k));
  let total=0;
  for(const [ty,loc,day,n] of D.rows){
-  if(day<f||day>t||(cat&&D.types[ty]!==cat))continue;
+  if(day<f||day>t||(cat&&D.types[ty]!==cat)||(lc&&loc!==lc))continue;
   const name=D.locations[loc];if(pl&&!name.endsWith("["+pl+"]"))continue;if(ht&&isTest(name))continue;
   ((agg[ty]??={})[loc]=(agg[ty][loc]||0)+n);total+=n;
  }
