@@ -54,8 +54,8 @@ function fillLocs(){
 ["from","to","cat","loc"].forEach(i=>$(i).onchange=render);
 ["plat","showTest"].forEach(i=>$(i).onchange=()=>{fillLocs();render()});
 fillLocs();
-// Firebase console escapes path characters with "~" where a URL would use "%".
-const consoleUrl=loc=>D.console+encodeURIComponent("/logs/"+loc).replace(/%/g,"~");
+// Firebase console writes path separators as "~2F"; the key itself is normally percent-encoded.
+const consoleUrl=loc=>D.console+"~2Flogs~2F"+encodeURIComponent(loc);
 const esc=s=>s.replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
 function render(){
  const f=$("from").value,t=$("to").value,cat=$("cat").value,pl=$("plat").value,ht=!$("showTest").checked,lc=$("loc").value;
