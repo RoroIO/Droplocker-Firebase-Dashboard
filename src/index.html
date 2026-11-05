@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Guest Rental Error Dashboard</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--fg:#1c2330;--mut:#6b7585;--line:#e3e6ec;--bar:#d6453d;--acc:#2f5fd0}
+@media(prefers-color-scheme:dark){:root{--bg:#12151b;--card:#1b2029;--fg:#e6e9ef;--mut:#8f99aa;--line:#2b3240;--bar:#e5675f;--acc:#6f95ee}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 system-ui,sans-serif}
+header,main{max-width:1100px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:0}.sub{color:var(--mut);font-size:12px}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:end;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;margin-top:12px}
+label{display:flex;flex-direction:column;font-size:11px;color:var(--mut);gap:3px}
+input,select,button{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+button{cursor:pointer}button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+.kpis{display:flex;gap:10px;margin:12px 0;flex-wrap:wrap}.kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 16px}
+.kpi b{display:block;font-size:22px}.kpi span{color:var(--mut);font-size:12px}
+details{background:var(--card);border:1px solid var(--line);border-radius:10px;margin-bottom:8px}
+summary{cursor:pointer;padding:10px 14px;display:flex;gap:10px;align-items:center;list-style:none}
+summary::-webkit-details-marker{display:none}summary::before{content:"▸";color:var(--mut)}details[open]>summary::before{content:"▾"}
+.t{flex:1;font-weight:600}.tag{font-size:11px;color:var(--mut);border:1px solid var(--line);border-radius:99px;padding:1px 8px}
+.n{font-variant-numeric:tabular-nums;font-weight:700}
+.locs{padding:0 14px 12px}.row{display:grid;grid-template-columns:minmax(120px,2fr) 3fr 60px;gap:10px;align-items:center;padding:3px 0;border-top:1px solid var(--line)}
+.track{height:8px;background:var(--line);border-radius:4px}.fill{height:100%;background:var(--bar);border-radius:4px}
+.empty{color:var(--mut);padding:30px;text-align:center}
+@media(max-width:600px){.row{grid-template-columns:1fr 50px}.track{display:none}}
+</style></head><body>
+<header><h1>Guest Rental — Failure Dashboard</h1><div class="sub" id="gen"></div>
+<div class="bar">
+ <label>From<input type="date" id="from"></label><label>To<input type="date" id="to"></label>
+ <span><button data-d="1">Today</button> <button data-d="7">7d</button> <button data-d="30">30d</button> <button data-d="90">90d</button> <button data-d="0">All</button></span>
+ <label>Category<select id="cat"><option value="">All</option></select></label>
+ <label>Platform<select id="plat"><option value="">All</option><option>kiosk</option><option>mobile</option></select></label>
+ <label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="test" checked> Hide test locations</label>
+</div></header>
+<main><div class="kpis" id="kpis"></div><div id="list"><div class="empty">Loading…</div></div></main>
+<script>
+const $=id=>document.getElementById(id);let D;
+const isTest=n=>/test|vaibhav|rishabh|aman |wesko|\[kiosk\] ?\(unnamed\)|\(unnamed\)/i.test(n);
+function init(){
+const dates=[...new Set(D.rows.map(r=>r[2]))].sort(), maxD=dates[dates.length-1], minD=dates[0];
+$("gen").textContent="Data through "+maxD+" · refreshed "+new Date(D.generated).toLocaleString();
+[...new Set(Object.values(D.types))].sort().forEach(c=>$("cat").add(new Option(c,c)));
+$("from").value=minD;$("to").value=maxD;
+function preset(n){const t=new Date(maxD+"T00:00Z");t.setUTCDate(t.getUTCDate()-n+1);$("to").value=maxD;$("from").value=n?t.toISOString().slice(0,10):minD;render()}
+document.querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>preset(+b.dataset.d));
+["from","to","cat","plat","test"].forEach(i=>$(i).onchange=render);
+const esc=s=>s.replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+function render(){
+ const f=$("from").value,t=$("to").value,cat=$("cat").value,pl=$("plat").value,ht=$("test").checked;
+ const agg={},open=new Set([...document.querySelectorAll("details[open]")].map(d=>d.dataset.k));
+ let total=0;
+ for(const [ty,loc,day,n] of D.rows){
+  if(day<f||day>t||(cat&&D.types[ty]!==cat))continue;
+  const name=D.locations[loc];if(pl&&!name.endsWith("["+pl+"]"))continue;if(ht&&isTest(name))continue;
+  ((agg[ty]??={})[loc]=(agg[ty][loc]||0)+n);total+=n;
+ }
+ const types=Object.entries(agg).map(([ty,l])=>[ty,l,Object.values(l).reduce((a,b)=>a+b,0)]).sort((a,b)=>b[2]-a[2]);
+ const locs=new Set(types.flatMap(x=>Object.keys(x[1])));
+ $("kpis").innerHTML=`<div class="kpi"><b>${total.toLocaleString()}</b><span>total errors</span></div><div class="kpi"><b>${types.length}</b><span>failure types</span></div><div class="kpi"><b>${locs.size}</b><span>locations affected</span></div>`;
+ $("list").innerHTML=types.length?types.map(([ty,l,sum])=>{
+  const es=Object.entries(l).sort((a,b)=>b[1]-a[1]),mx=es[0][1];
+  return `<details data-k="${esc(ty)}"${open.has(ty)?" open":""}><summary><span class="t">${esc(ty)}</span><span class="tag">${D.types[ty]}</span><span class="tag">${es.length} loc</span><span class="n">${sum.toLocaleString()}</span></summary><div class="locs">${es.map(([loc,n])=>`<div class="row"><span>${esc(D.locations[loc])}</span><div class="track"><div class="fill" style="width:${n/mx*100}%"></div></div><b class="n" style="text-align:right">${n.toLocaleString()}</b></div>`).join("")}</div></details>`}).join(""):'<div class="empty">No errors in this range.</div>';
+}
+render();
+}
+fetch("data.json").then(r=>r.json()).then(d=>{D=d;init()}).catch(e=>$("list").innerHTML='<div class="empty">Could not load data.json</div>');
+</script></body></html>
